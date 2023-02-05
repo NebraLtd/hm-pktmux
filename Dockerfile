@@ -1,4 +1,6 @@
-FROM --platform=linux/arm64 balenalib/raspberrypi3-golang:1-bullseye-build as pktmux-builder
+ARG BUILD_BOARD
+
+FROM balenalib/"$BUILD_BOARD"-golang:1-bullseye-build AS pktmux-builder
 
 ENV PROJECT_PATH=/chirpstack-packet-multiplexer
 ENV PATH=$PATH:$PROJECT_PATH/build
@@ -7,8 +9,7 @@ ENV GO_EXTRA_BUILD_ARGS="-a -installsuffix cgo"
 ENV OUTPUT_DIR=/opt/output/pktmux-dependencies
 ENV INPUT_DIR=/opt/input
 
-RUN apt-get update
-RUN apt-get install tzdata make git bash python3 python3-pip
+RUN install_packages tzdata make git bash python3 python3-pip
 
 # Deal with Python deps
 WORKDIR "$INPUT_DIR"
@@ -22,14 +23,13 @@ WORKDIR $PROJECT_PATH
 RUN make dev-requirements
 RUN make
 
-FROM --platform=linux/arm64 balenalib/raspberrypi3-golang:1-bullseye-run as pktmux-runner
+FROM balenalib/"$BUILD_BOARD"-golang:1-bullseye-run AS pktmux-runner
 
 # Python stuff
 ENV ROOT_DIR=/opt
 ENV PYTHON_DEPENDENCIES_DIR="$ROOT_DIR/pktmux-dependencies"
 COPY --from=pktmux-builder /opt/output/pktmux-dependencies /opt/pktmux-dependencies
-RUN apt-get update
-RUN apt-get install python3
+RUN install_packages python3
 ENV PYTHONPATH=/opt/pktmux-dependencies
 
 WORKDIR /root/
